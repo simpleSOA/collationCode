@@ -117,7 +117,7 @@ public class HttpClientUtil {
     public static String sendHttpGet(String url,Map<String, String> maps) throws Exception{
         HttpGet httpGet = new HttpGet(url);// 创建httpPost
         // 创建参数队列
-        List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+        List<NameValuePair> nameValuePairs = new ArrayList<>();
         for (String key : maps.keySet()) {
             nameValuePairs.add(new BasicNameValuePair(key, maps.get(key)));
         }

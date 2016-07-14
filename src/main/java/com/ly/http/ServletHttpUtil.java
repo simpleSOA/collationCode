@@ -51,7 +51,6 @@ public class ServletHttpUtil {
         try {
             s = URLDecoder.decode(s, UTF8);
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
         }
         String[] values = parseQueryString(s).get(name);
         if (values != null && values.length > 0) {
@@ -74,7 +73,6 @@ public class ServletHttpUtil {
             try {
                 s = URLDecoder.decode(s, UTF8);
             } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
             }
             map = parseQueryString(s);
         }

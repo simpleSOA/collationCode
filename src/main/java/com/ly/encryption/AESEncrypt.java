@@ -1,7 +1,5 @@
 package com.ly.encryption;
 
-import org.apache.commons.codec.binary.Base64;
-
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -9,6 +7,7 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.Base64;
 
 /**
  * AES加密
@@ -20,7 +19,6 @@ public class AESEncrypt {
      * 默认密钥
      */
     private static final Charset ENCODING = StandardCharsets.UTF_8;
-    private static final Base64 base64=new Base64();
 
     /**
      * aes加密后再base64编码
@@ -46,7 +44,7 @@ public class AESEncrypt {
         byte[] byteContent = sSrc.getBytes(ENCODING);
         cipher.init(Cipher.ENCRYPT_MODE, keySpec);// 初始化
         byte[] result = cipher.doFinal(byteContent);
-        return new String(base64.encode(result),ENCODING);
+        return Base64.getEncoder().encodeToString(result);
     }
 
     /**
@@ -58,7 +56,7 @@ public class AESEncrypt {
         if (key.length() != 16) {
             throw new RuntimeException("key length not equal 16. key length is " + key.length());
         }
-        byte[] content = base64.decode(sSrc.getBytes(ENCODING));// 先用base64解密
+        byte[] content = Base64.getDecoder().decode(sSrc);// 先用base64解密
         KeyGenerator kgen = KeyGenerator.getInstance("AES");
         //防止linux下 随机生成key
         SecureRandom secureRandom = SecureRandom.getInstance("SHA1PRNG");
