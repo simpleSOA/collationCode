@@ -24,10 +24,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.CodingErrorAction;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -50,16 +54,33 @@ public class HttpClientUtil {
     private static CloseableHttpClient httpClient;
 
     static {
-        SSLContext sslcontext = SSLContexts.createSystemDefault();
+        X509TrustManager tm = new X509TrustManager() {
+
+            public void checkClientTrusted(X509Certificate[] xcs,
+                                           String string) throws CertificateException {
+
+            }
+            public void checkServerTrusted(X509Certificate[] xcs,
+                                           String string) throws CertificateException {
+            }
+            public X509Certificate[] getAcceptedIssuers() {
+                return null;
+            }
+        };
+        SSLContext sslcontext;
+        try {
+            sslcontext = SSLContext.getInstance("SSL");
+            sslcontext.init(null,new TrustManager[]{tm},null);
+        } catch (Exception e) {
+            throw new RuntimeException("init SSLContext error",e);
+        }
 
         Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
                 .register("http", PlainConnectionSocketFactory.INSTANCE)
                 .register("https", new SSLConnectionSocketFactory(sslcontext))
                 .build();
 
-        connManager = new PoolingHttpClientConnectionManager(
-                socketFactoryRegistry);
-
+        connManager = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
         SocketConfig socketConfig = SocketConfig.custom().setTcpNoDelay(true).build();
         connManager.setDefaultSocketConfig(socketConfig);
         connManager.setValidateAfterInactivity(1000);
