@@ -8,6 +8,7 @@ import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.config.*;
 import org.apache.http.conn.socket.ConnectionSocketFactory;
 import org.apache.http.conn.socket.PlainConnectionSocketFactory;
@@ -18,7 +19,6 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.impl.cookie.BasicClientCookie;
 import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.ssl.SSLContexts;
 import org.apache.http.util.EntityUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,15 +30,17 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.CodingErrorAction;
+import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 public class HttpClientUtil {
 
-    public static final Logger log = LoggerFactory.getLogger(HttpClientUtil.class);
+    public static final Logger LOGGER = LoggerFactory.getLogger(HttpClientUtil.class);
 
     final static int CONNECTION_TIMEOUT = 2 * 1000; //设置连接超时时间，单位毫秒
     final static int SO_TIMEOUT = 2 * 1000; //请求获取数据的超时时间，单位毫秒
@@ -98,10 +100,17 @@ public class HttpClientUtil {
                 .setMessageConstraints(messageConstraints)
                 .build();
         connManager.setDefaultConnectionConfig(connectionConfig);
-        // Configure total max or per route limits for persistent connections
-        // that can be kept in the pool or leased by the connection manager.
+        /**
+         * 此处解释下MaxtTotal和DefaultMaxPerRoute的区别：
+            1、MaxtTotal是整个池子的大小；
+            2、DefaultMaxPerRoute是根据连接到的主机对MaxTotal的一个细分；比如：
+            MaxtTotal=400 DefaultMaxPerRoute=200
+            而我只连接到http://sishuok.com时，到这个主机的并发最多只有200；而不是400；
+            而我连接到http://sishuok.com 和 http://qq.com时，到每个主机的并发最多只有200；即加起来是400（但不能超过400）；所以起作用的设置是DefaultMaxPerRoute。
+         */
         connManager.setMaxTotal(100);
         connManager.setDefaultMaxPerRoute(10);
+
 
         httpClient = HttpClients.custom()
                 .setDefaultRequestConfig(requestConfig)
@@ -110,13 +119,14 @@ public class HttpClientUtil {
 
 
     /**
-     * 发送 post请求
+     * 发送 post请求，默认编码是UTF-8
      * @param httpUrl 地址
      * @param maps 参数
      */
-    public static String sendHttpPost(String httpUrl, Map<String, String> maps) throws IOException{
-        return sendHttpPost(httpUrl,maps,Consts.UTF_8);
+    public static String sendHttpPost(String httpUrl, Map<String, String> maps, Map<String, String> headers) throws IOException{
+        return sendHttpPost(httpUrl, maps, StandardCharsets.UTF_8, headers);
     }
+
 
     /**
      * 发送 post请求
@@ -124,45 +134,55 @@ public class HttpClientUtil {
      * @param maps 参数
      * @param charset 按给定的字符集给参数编码
      */
-    public static String sendHttpPost(String httpUrl, Map<String, String> maps, Charset charset) throws IOException{
+    public static String sendHttpPost(String httpUrl, Map<String, String> maps, Charset charset,Map<String, String> headers) throws IOException{
         HttpPost httpPost = new HttpPost(httpUrl);// 创建httpPost
         // 创建参数队列
         List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
-        for (String key : maps.keySet()) {
-            nameValuePairs.add(new BasicNameValuePair(key, maps.get(key)));
+        for (Map.Entry<String, String> m : maps.entrySet()) {
+            nameValuePairs.add(new BasicNameValuePair(m.getKey(), m.getValue()));
+        }
+        if(headers != null){
+            for (Map.Entry<String, String> m : headers.entrySet()) {
+                httpPost.addHeader(m.getKey(), m.getValue());
+            }
+        }else{
+            addDefaultHeader(httpPost);
         }
         httpPost.setEntity(new UrlEncodedFormEntity(nameValuePairs, charset));
-        return sendHttpPost(httpPost);
+        return sendHttpPost(httpPost, charset);
     }
 
-    public static String sendHttpGet(String url,Map<String, String> maps) throws Exception{
+    /**
+     * 发送doGet请求，默认编码是UTF-8
+     * @param url 地址
+     * @param maps 参数
+     */
+    public static String sendHttpGet(String url,Map<String, String> maps,Map<String, String> headers) throws Exception{
+        return sendHttpGet(url,maps,StandardCharsets.UTF_8,headers);
+    }
+
+    public static String sendHttpGet(String url,Map<String, String> maps, Charset charset,Map<String, String> headers) throws Exception{
         HttpGet httpGet = new HttpGet(url);// 创建httpPost
-        // 创建参数队列
         List<NameValuePair> nameValuePairs = new ArrayList<>();
-        for (String key : maps.keySet()) {
-            nameValuePairs.add(new BasicNameValuePair(key, maps.get(key)));
+        for (Map.Entry<String, String> m : maps.entrySet()) {
+            nameValuePairs.add(new BasicNameValuePair(m.getKey(), m.getValue()));
         }
         // 设置参数
         String str = EntityUtils.toString(new UrlEncodedFormEntity(nameValuePairs));
-        httpGet.setURI(new URI(httpGet.getURI().toString() + "?" + str));
-        CloseableHttpResponse response = null;
-        String responseContent = null;
-        try {
-            // 执行请求
-            response = getHttpClient().execute(httpGet);
-            HttpEntity entity = response.getEntity();
-            responseContent = EntityUtils.toString(entity, "UTF-8");
-        } finally {
-            try {
-                // 关闭连接,释放资源
-                if (response != null) {
-                    response.close();
-                }
-            } catch (IOException e) {
-                log.warn("close the http response error",e);
-            }
+        if(LOGGER.isDebugEnabled()){
+            LOGGER.debug("get request url [{}], query string [{}]",url,str);
         }
-        return responseContent;
+        httpGet.setURI(new URI(httpGet.getURI().toString() + "?" + str));
+        if(headers != null){
+            for (Map.Entry<String, String> m : headers.entrySet()) {
+                httpGet.addHeader(m.getKey(), m.getValue());
+            }
+        }else{
+            addDefaultHeader(httpGet);
+        }
+        try(CloseableHttpResponse response = getHttpClient().execute(httpGet)) {
+            return EntityUtils.toString(response.getEntity(), charset);
+        }
     }
 
 
@@ -170,30 +190,20 @@ public class HttpClientUtil {
         return httpClient;
     }
 
+    private static void addDefaultHeader(HttpRequestBase request){
+        request.addHeader("Accept","text/html,application/json,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8");
+        request.addHeader("User-Agent","Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.99 Safari/537.36");
+    }
+
     /**
      * 发送Post请求
      * @param httpPost
      * @return
      */
-    private static String sendHttpPost(HttpPost httpPost) throws IOException {
-        CloseableHttpResponse response = null;
-        String responseContent = null;
-        try {
-            // 执行请求
-            response = httpClient.execute(httpPost);
-            HttpEntity entity = response.getEntity();
-            responseContent = EntityUtils.toString(entity, "UTF-8");
-        } finally {
-            try {
-                // 关闭连接,释放资源
-                if (response != null) {
-                    response.close();
-                }
-            } catch (IOException e) {
-                log.warn("close the http response error",e);
-            }
+    private static String sendHttpPost(HttpPost httpPost, Charset charset) throws IOException {
+        try (CloseableHttpResponse response = httpClient.execute(httpPost)){
+            return EntityUtils.toString(response.getEntity(), charset);
         }
-        return responseContent;
     }
 
     /**
