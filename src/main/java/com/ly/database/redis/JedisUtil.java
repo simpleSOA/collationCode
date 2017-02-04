@@ -15,7 +15,10 @@ import java.util.Set;
  */
 public class JedisUtil {
     private static final JedisUtil redis = new JedisUtil();
-
+    private static final String SETNX_EXPIRE_SCRIPT = "if redis.call('setnx', KEYS[1], KEYS[2]) == 1 then\n"
+            +"return redis.call('expire', KEYS[1], KEYS[3]);\n"
+            +"end\n"
+            +"return nil;";
     /**
      * 缓存生存时间
      */
@@ -115,7 +118,25 @@ public class JedisUtil {
             jedis.close();
         }
     }
-
+    /**
+     * setnx带过期时间功能
+     * @param key 键名
+     * @param value 键值
+     * @param seconds 单位秒
+     * @see   redis.clients.jedis.Jedis#setnx(String, String)
+     * @see   redis.clients.jedis.Jedis#expire(String, int)
+     * @return 成功返回true,失败false
+     */
+    public boolean setnxAndExpire(String key,String value,int seconds){
+        Jedis redis = null;
+        try {
+            redis = getJedis();
+            Object result = redis.eval(SETNX_EXPIRE_SCRIPT, 3,key,value,seconds+"");
+            return result != null;
+        } finally {
+            redis.close();
+        }
+    }
     /**
      * 当 oldkey 已经存在时,将 oldkey 改名为 newkey，如果不存在该oldkey,将会发生异常
      *
