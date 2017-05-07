@@ -51,7 +51,6 @@ public class ServletHttpUtil {
         try {
             s = URLDecoder.decode(s, UTF8);
         } catch (UnsupportedEncodingException e) {
-            e.printStackTrace();
         }
         String[] values = parseQueryString(s).get(name);
         if (values != null && values.length > 0) {
@@ -69,17 +68,16 @@ public class ServletHttpUtil {
         } else {
             String s = request.getQueryString();
             if (StringUtils.isBlank(s)) {
-                return new HashMap<>();
+                return new HashMap<>(2);
             }
             try {
                 s = URLDecoder.decode(s, UTF8);
             } catch (UnsupportedEncodingException e) {
-                e.printStackTrace();
             }
             map = parseQueryString(s);
         }
 
-        Map<String, Object> params = new HashMap<>(map.size());
+        Map<String, Object> params = new HashMap<>();
         int len;
         for (Map.Entry<String, String[]> entry : map.entrySet()) {
             len = entry.getValue().length;
@@ -94,14 +92,13 @@ public class ServletHttpUtil {
 
 
     public static Map<String, String[]> parseQueryString(String s) {
-        String valArray[];
-        if (s == null) {
-            throw new IllegalArgumentException();
+        if (s == null || "".equals(s)) {
+            return new HashMap<>(2);
         }
+        String[] kv = s.split("&");
         Map<String, String[]> ht = new HashMap<>();
-        StringTokenizer st = new StringTokenizer(s, "&");
-        while (st.hasMoreTokens()) {
-            String pair = st.nextToken();
+        for(int i=0,len=kv.length;i<len;i++){
+            String pair = kv[i];
             int pos = pair.indexOf('=');
             if (pos == -1) {
                 continue;
@@ -110,16 +107,13 @@ public class ServletHttpUtil {
             String val = pair.substring(pos + 1, pair.length());
             if (ht.containsKey(key)) {
                 String oldVals[] = ht.get(key);
-                valArray = new String[oldVals.length + 1];
-                for (int i = 0; i < oldVals.length; i++) {
-                    valArray[i] = oldVals[i];
-                }
+                String valArray[] = new String[oldVals.length + 1];
+                System.arraycopy(oldVals,0,valArray,0,oldVals.length);
                 valArray[oldVals.length] = val;
+                ht.put(key, valArray);
             } else {
-                valArray = new String[1];
-                valArray[0] = val;
+                ht.put(key, new String[]{val});
             }
-            ht.put(key, valArray);
         }
         return ht;
     }
@@ -484,5 +478,32 @@ public class ServletHttpUtil {
         return (StringUtils.isEmpty(value)) ? defaultValue : value;
     }
 
+    /**
+     * ip地址转换成数字
+     */
+    public long ipToLong(String ipAddress) {
+        long result = 0;
+        String[] ipAddressInArray = ipAddress.split("\\.");
 
+        for (int i = 3; i >= 0; i--) {
+            long ip = Long.parseLong(ipAddressInArray[3 - i]);
+            result |= ip << (i * 8);
+        }
+
+        return result;
+    }
+
+    public String longToIp(long ip) {
+        StringBuilder sb = new StringBuilder(15);
+
+        for (int i = 0; i < 4; i++) {
+            sb.insert(0, Long.toString(ip & 0xff));
+            if (i < 3) {
+                sb.insert(0, '.');
+            }
+            ip = ip >> 8;
+        }
+
+        return sb.toString();
+    }
 }
