@@ -45,9 +45,11 @@ public class HttpClientUtil {
 
     public static final Logger LOGGER = LoggerFactory.getLogger(HttpClientUtil.class);
 
-    final static int CONNECTION_TIMEOUT = 2 * 1000; //设置连接超时时间，单位毫秒
-    final static int SO_TIMEOUT = 2 * 1000; //请求获取数据的超时时间，单位毫秒
-    final static int CONNECTION_REQUEST_TIMEOUT = 2 * 1000; //设置从connect Manager获取Connection 超时时间，单位毫秒
+    private final static int CONNECTION_TIMEOUT = 4 * 1000; //设置连接超时时间，单位毫秒
+    private final static int SO_TIMEOUT = 4 * 1000; //请求获取数据的超时时间，单位毫秒
+    private final static int CONNECTION_REQUEST_TIMEOUT = 500; //设置从连接池获取链接的超时时间，不能设置太大，否则会造成线程阻塞造成雪球效应
+
+    private static final Map<String, String> DEFAULT_HEADERS = new HashMap<>();
 
     private static RequestConfig requestConfig = RequestConfig.custom()
             .setSocketTimeout(SO_TIMEOUT)
@@ -55,10 +57,10 @@ public class HttpClientUtil {
             .setConnectionRequestTimeout(CONNECTION_REQUEST_TIMEOUT)
             .build();
 
-    private static PoolingHttpClientConnectionManager connManager;
     private static CloseableHttpClient httpClient;
 
     static {
+        DEFAULT_HEADERS.put(HTTP.CONN_DIRECTIVE,HTTP.CONN_CLOSE);
         X509TrustManager tm = new X509TrustManager() {
 
             public void checkClientTrusted(X509Certificate[] xcs,
@@ -85,17 +87,14 @@ public class HttpClientUtil {
                 .register("https", new SSLConnectionSocketFactory(sslcontext))
                 .build();
 
-        connManager = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
+        PoolingHttpClientConnectionManager connManager = new PoolingHttpClientConnectionManager(socketFactoryRegistry);
         SocketConfig socketConfig = SocketConfig.custom().setTcpNoDelay(true).build();
         connManager.setDefaultSocketConfig(socketConfig);
-        connManager.setValidateAfterInactivity(1000);
 
-        // Create message constraints
         MessageConstraints messageConstraints = MessageConstraints.custom()
                 .setMaxHeaderCount(200)
                 .setMaxLineLength(2000)
                 .build();
-        // Create connection configuration
         ConnectionConfig connectionConfig = ConnectionConfig.custom()
                 .setMalformedInputAction(CodingErrorAction.IGNORE)
                 .setUnmappableInputAction(CodingErrorAction.IGNORE)
@@ -105,25 +104,27 @@ public class HttpClientUtil {
         connManager.setDefaultConnectionConfig(connectionConfig);
         /**
          * 此处解释下MaxtTotal和DefaultMaxPerRoute的区别：
-            1、MaxtTotal是整个池子的大小；
-            2、DefaultMaxPerRoute是根据连接到的主机对MaxTotal的一个细分；比如：
-            MaxtTotal=400 DefaultMaxPerRoute=200
-            而我只连接到http://sishuok.com时，到这个主机的并发最多只有200；而不是400；
-            而我连接到http://sishuok.com 和 http://qq.com时，到每个主机的并发最多只有200；即加起来是400（但不能超过400）；所以起作用的设置是DefaultMaxPerRoute。
+         1、MaxtTotal是整个池子的大小；
+         2、DefaultMaxPerRoute是根据连接到的主机对MaxTotal的一个细分；比如：
+         MaxtTotal=400 DefaultMaxPerRoute=200
+         而我只连接到http://sishuok.com时，到这个主机的并发最多只有200；而不是400；
+         而我连接到http://sishuok.com 和 http://qq.com时，到每个主机的并发最多只有200；即加起来是400（但不能超过400）；所以起作用的设置是DefaultMaxPerRoute。
          */
-        connManager.setMaxTotal(100);
-        connManager.setDefaultMaxPerRoute(10);
+        connManager.setMaxTotal(180);
+        connManager.setDefaultMaxPerRoute(40);
 
 
-        httpClient = HttpClients.custom().setKeepAliveStrategy(new ConnectionKeepAliveStrategy() {
-            @Override
-            public long getKeepAliveDuration(HttpResponse response, HttpContext context) {
-                return -1;
-            }
-        }).setDefaultRequestConfig(requestConfig)
+        httpClient = HttpClients.custom().setKeepAliveStrategy((response, context) -> -1).setDefaultRequestConfig(requestConfig).disableAutomaticRetries()
                 .setConnectionManager(connManager).build();
     }
-
+    /**
+     * 发送 post请求，默认编码是UTF-8
+     * @param httpUrl 地址
+     * @param maps 参数
+     */
+    public static String sendHttpPost(String httpUrl, Map<String, String> maps) throws IOException{
+        return sendHttpPost(httpUrl, maps, StandardCharsets.UTF_8, DEFAULT_HEADERS);
+    }
 
     /**
      * 发送 post请求，默认编码是UTF-8
@@ -144,48 +145,67 @@ public class HttpClientUtil {
     public static String sendHttpPost(String httpUrl, Map<String, String> maps, Charset charset,Map<String, String> headers) throws IOException{
         HttpPost httpPost = new HttpPost(httpUrl);// 创建httpPost
         // 创建参数队列
-        List<NameValuePair> nameValuePairs = new ArrayList<NameValuePair>();
+        List<NameValuePair> nameValuePairs = new ArrayList<>();
+        final StringBuilder param = new StringBuilder();
         for (Map.Entry<String, String> m : maps.entrySet()) {
             nameValuePairs.add(new BasicNameValuePair(m.getKey(), m.getValue()));
+            if (param.length() > 0) {
+                param.append('&');
+            }
+            param.append(m.getKey());
+            if (m.getValue() != null) {
+                param.append('=');
+                param.append(m.getValue());
+            }
         }
         if(headers != null){
             for (Map.Entry<String, String> m : headers.entrySet()) {
                 httpPost.addHeader(m.getKey(), m.getValue());
             }
-        }else{
-            addDefaultHeader(httpPost);
         }
         httpPost.setEntity(new UrlEncodedFormEntity(nameValuePairs, charset));
-        return sendHttpPost(httpPost, charset);
+        if(LOGGER.isInfoEnabled()){
+            LOGGER.info("url :{}, param :{}",httpUrl,param);
+        }
+        String data = sendHttpPost(httpPost, charset);
+        if(LOGGER.isInfoEnabled()){
+            LOGGER.info("post response {}",data);
+        }
+        return data;
     }
-
     /**
      * 发送doGet请求，默认编码是UTF-8
      * @param url 地址
      * @param maps 参数
      */
+    public static String sendHttpGet(String url,Map<String, String> maps) throws Exception{
+        return sendHttpGet(url,maps,StandardCharsets.UTF_8,DEFAULT_HEADERS);
+    }
+
     public static String sendHttpGet(String url,Map<String, String> maps,Map<String, String> headers) throws Exception{
         return sendHttpGet(url,maps,StandardCharsets.UTF_8,headers);
     }
 
     public static String sendHttpGet(String url,Map<String, String> maps, Charset charset,Map<String, String> headers) throws Exception{
-        HttpGet httpGet = new HttpGet(url);// 创建httpPost
-        List<NameValuePair> nameValuePairs = new ArrayList<>();
-        for (Map.Entry<String, String> m : maps.entrySet()) {
-            nameValuePairs.add(new BasicNameValuePair(m.getKey(), m.getValue()));
+        HttpGet httpGet = new HttpGet(url);
+        String uri = httpGet.getURI().toString();
+        if(maps !=null || maps.isEmpty()){
+            List<NameValuePair> nameValuePairs = new ArrayList<>();
+            for (Map.Entry<String, String> m : maps.entrySet()) {
+                nameValuePairs.add(new BasicNameValuePair(m.getKey(), m.getValue()));
+            }
+            // 设置参数
+            String str = EntityUtils.toString(new UrlEncodedFormEntity(nameValuePairs));
+            uri += "?"+str;
         }
-        // 设置参数
-        String str = EntityUtils.toString(new UrlEncodedFormEntity(nameValuePairs));
         if(LOGGER.isDebugEnabled()){
-            LOGGER.debug("get request url [{}], query string [{}]",url,str);
+            LOGGER.debug("get request uri [{}]",uri);
         }
-        httpGet.setURI(new URI(httpGet.getURI().toString() + "?" + str));
+        httpGet.setURI(new URI(uri));
         if(headers != null){
             for (Map.Entry<String, String> m : headers.entrySet()) {
                 httpGet.addHeader(m.getKey(), m.getValue());
             }
-        }else{
-            addDefaultHeader(httpGet);
         }
         try(CloseableHttpResponse response = getHttpClient().execute(httpGet)) {
             return EntityUtils.toString(response.getEntity(), charset);
@@ -193,12 +213,8 @@ public class HttpClientUtil {
     }
 
 
-    public static CloseableHttpClient getHttpClient(){
+    private static CloseableHttpClient getHttpClient(){
         return httpClient;
-    }
-
-    private static void addDefaultHeader(HttpRequestBase request){
-        request.addHeader(HTTP.CONN_DIRECTIVE,HTTP.CONN_CLOSE);
     }
 
     /**
@@ -212,42 +228,6 @@ public class HttpClientUtil {
         }
     }
 
-    /**
-     * 将服务端返回的cookie存放起来
-     * @param cookieStore 存放cookie的对象
-     * @param response
-     */
-    public static void parseRespCookie(CookieStore cookieStore, CloseableHttpResponse response){
-        Header[] headers = response.getHeaders("Set-Cookie");
-        for(Header header : headers){
-            HeaderElement[] elements = header.getElements();
-            for (HeaderElement element : elements){
-                BasicClientCookie cookie = new BasicClientCookie(element.getName(),element.getValue());
-                NameValuePair[] params = element.getParameters();
-                for (int i = 0; i < params.length; i++) {
-                    if ("path".equalsIgnoreCase(params[i].getName())){
-                        cookie.setPath(params[i].getValue());
-                    }else {
-                        cookie.setDomain(params[i].getValue());
-                    }
-                }
-                cookieStore.addCookie(cookie);
-            }
-        }
-    }
-
-    /**
-     * 将cookie拼装成http请求中格式的字符串
-     */
-    public static String getRequestCookie(CookieStore cookieStore){
-        String cookieValue = "";
-        for(Cookie cookie :cookieStore.getCookies()){
-            cookieValue+=cookie.getName()+"="+cookie.getValue()+"; ";
-        }
-        if(cookieValue.length() > 0){
-            cookieValue = cookieValue.substring(0,cookieValue.length()-2);
-        }
-        return cookieValue;
-    }
 
 }
+
