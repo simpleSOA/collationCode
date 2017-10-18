@@ -97,7 +97,7 @@ public class ServletHttpUtil {
         }
         String[] kv = s.split("&");
         Map<String, String[]> ht = new HashMap<>();
-        for(int i=0,len=kv.length;i<len;i++){
+        for (int i = 0, len = kv.length; i < len; i++) {
             String pair = kv[i];
             int pos = pair.indexOf('=');
             if (pos == -1) {
@@ -106,9 +106,9 @@ public class ServletHttpUtil {
             String key = pair.substring(0, pos);
             String val = pair.substring(pos + 1, pair.length());
             if (ht.containsKey(key)) {
-                String oldVals[] = ht.get(key);
-                String valArray[] = new String[oldVals.length + 1];
-                System.arraycopy(oldVals,0,valArray,0,oldVals.length);
+                String[] oldVals = ht.get(key);
+                String[] valArray = new String[oldVals.length + 1];
+                System.arraycopy(oldVals, 0, valArray, 0, oldVals.length);
                 valArray[oldVals.length] = val;
                 ht.put(key, valArray);
             } else {
@@ -138,6 +138,7 @@ public class ServletHttpUtil {
     /**
      * 取得URL跟路径，不包含应用上下文名称
      * 如：http://localhost:8080/xxx/admin/login ->http://localhost:8080
+     *
      * @param request
      * @return
      */
@@ -150,12 +151,14 @@ public class ServletHttpUtil {
     /**
      * 取得包含应用上下文名称的路径
      * 如：http://localhost:8080/xxx/admin/login ->http://localhost:8080/xxx
+     *
      * @param request
      * @return 返回应用
      */
-    public static String getApplicationBaseURL(HttpServletRequest request){
-        return getBaseURL(request)+request.getContextPath();
+    public static String getApplicationBaseURL(HttpServletRequest request) {
+        return getBaseURL(request) + request.getContextPath();
     }
+
     /**
      * 获取访问者IP
      * <p/>
@@ -194,7 +197,9 @@ public class ServletHttpUtil {
      */
     public static boolean isRobot(HttpServletRequest req) {
         String ua = req.getHeader("user-agent");
-        if (StringUtils.isBlank(ua)) return false;
+        if (StringUtils.isBlank(ua)) {
+            return false;
+        }
         return (ua != null
                 && (ua.contains("Baiduspider") || ua.contains("Googlebot")
                 || ua.contains("sogou")
@@ -306,10 +311,13 @@ public class ServletHttpUtil {
      */
     public static String getCookieValue(HttpServletRequest request, String name) {
         Cookie[] cookies = request.getCookies();
-        if (cookies == null) return null;
+        if (cookies == null) {
+            return null;
+        }
         for (Cookie ck : cookies) {
-            if (StringUtils.equalsIgnoreCase(name, ck.getName()))
+            if (StringUtils.equalsIgnoreCase(name, ck.getName())) {
                 return ck.getValue();
+            }
         }
         return null;
     }
@@ -323,8 +331,9 @@ public class ServletHttpUtil {
             String[] ips = StringUtils.split(ip, ',');
             if (ips != null) {
                 for (String tmpip : ips) {
-                    if (StringUtils.isBlank(tmpip))
+                    if (StringUtils.isBlank(tmpip)) {
                         continue;
+                    }
                     tmpip = tmpip.trim();
                     if (isIPAddr(tmpip) && !tmpip.startsWith("10.") && !tmpip.startsWith("192.168.") && !"127.0.0.1".equals(tmpip)) {
                         return tmpip.trim();
@@ -333,11 +342,13 @@ public class ServletHttpUtil {
             }
         }
         ip = req.getHeader("x-real-ip");
-        if (isIPAddr(ip))
+        if (isIPAddr(ip)) {
             return ip;
+        }
         ip = req.getRemoteAddr();
-        if (ip.indexOf('.') == -1)
+        if (ip.indexOf('.') == -1) {
             ip = "127.0.0.1";
+        }
         return ip;
     }
 
@@ -361,10 +372,10 @@ public class ServletHttpUtil {
      * @param maxAge
      */
     public static void setCookie(HttpServletRequest request, HttpServletResponse response, String name,
-                                 String value, int maxAge, boolean all_sub_domain) {
+                                 String value, int maxAge, boolean allSubDomain) {
         Cookie cookie = new Cookie(name, value);
         cookie.setMaxAge(maxAge);
-        if (all_sub_domain) {
+        if (allSubDomain) {
             String serverName = request.getServerName();
             String domain = getDomainOfServerName(serverName);
             if (domain != null && domain.indexOf('.') != -1) {
@@ -376,8 +387,8 @@ public class ServletHttpUtil {
     }
 
     public static void deleteCookie(HttpServletRequest request,
-                                    HttpServletResponse response, String name, boolean all_sub_domain) {
-        setCookie(request, response, name, "", 0, all_sub_domain);
+                                    HttpServletResponse response, String name, boolean allSubDomain) {
+        setCookie(request, response, name, "", 0, allSubDomain);
     }
 
     /**
@@ -388,20 +399,25 @@ public class ServletHttpUtil {
      * @return
      */
     public static String getDomainOfServerName(String host) {
-        if (isIPAddr(host))
+        if (isIPAddr(host)) {
             return null;
+        }
         String[] names = StringUtils.split(host, '.');
         int len = names.length;
-        if (len == 1) return null;
+        if (len == 1) {
+            return null;
+        }
         if (len == 3) {
             return makeup(names[len - 2], names[len - 1]);
         }
         if (len > 3) {
             String dp = names[len - 2];
-            if (dp.equalsIgnoreCase("com") || dp.equalsIgnoreCase("gov") || dp.equalsIgnoreCase("net") || dp.equalsIgnoreCase("edu") || dp.equalsIgnoreCase("org"))
+            if ("com".equalsIgnoreCase(dp) || "gov".equalsIgnoreCase(dp) || "net".equalsIgnoreCase(dp) ||
+                    "edu".equalsIgnoreCase(dp) || "org".equalsIgnoreCase(dp)) {
                 return makeup(names[len - 3], names[len - 2], names[len - 1]);
-            else
+            } else {
                 return makeup(names[len - 2], names[len - 1]);
+            }
         }
         return host;
     }
@@ -413,11 +429,13 @@ public class ServletHttpUtil {
      * @return
      */
     public static boolean isIPAddr(String addr) {
-        if (StringUtils.isEmpty(addr))
+        if (StringUtils.isEmpty(addr)) {
             return false;
+        }
         String[] ips = StringUtils.split(addr, '.');
-        if (ips.length != 4)
+        if (ips.length != 4) {
             return false;
+        }
         try {
             int ipa = Integer.parseInt(ips[0]);
             int ipb = Integer.parseInt(ips[1]);
@@ -430,10 +448,10 @@ public class ServletHttpUtil {
         return false;
     }
 
-    public static boolean isAjaxRequest(HttpServletRequest request){
+    public static boolean isAjaxRequest(HttpServletRequest request) {
         if (request.getHeader("accept").contains("application/json")
                 || (request.getHeader("X-Requested-With") != null
-                && request.getHeader("X-Requested-With").contains("XMLHttpRequest"))){
+                && request.getHeader("X-Requested-With").contains("XMLHttpRequest"))) {
             return true;
         }
         return false;
@@ -443,8 +461,9 @@ public class ServletHttpUtil {
     private static String makeup(String... ps) {
         StringBuilder s = new StringBuilder();
         for (int idx = 0; idx < ps.length; idx++) {
-            if (idx > 0)
+            if (idx > 0) {
                 s.append('.');
+            }
             s.append(ps[idx]);
         }
         return s.toString();

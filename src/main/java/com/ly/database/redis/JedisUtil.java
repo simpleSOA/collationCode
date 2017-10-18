@@ -14,11 +14,11 @@ import java.util.Set;
  * Date: 2016/3/25 Time: 13:57
  */
 public class JedisUtil {
-    private static final JedisUtil redis = new JedisUtil();
+    private static final JedisUtil REDIS = new JedisUtil();
     private static final String SETNX_EXPIRE_SCRIPT = "if redis.call('setnx', KEYS[1], KEYS[2]) == 1 then\n"
-            +"return redis.call('expire', KEYS[1], KEYS[3]);\n"
-            +"end\n"
-            +"return nil;";
+            + "return redis.call('expire', KEYS[1], KEYS[3]);\n"
+            + "end\n"
+            + "return nil;";
     /**
      * 缓存生存时间
      */
@@ -41,9 +41,6 @@ public class JedisUtil {
         }
         if (jedisPool == null) {
             JedisPoolConfig config = new JedisPoolConfig();
-            //可以自己定制连接池配置
-            //config.setTestOnBorrow(true);
-            //config.setTestOnReturn(true);
             jedisPool = new JedisPool(config, bundle.getString("redis.ip"), Integer.parseInt(bundle.getString("redis.port")));
         }
     }
@@ -67,7 +64,7 @@ public class JedisUtil {
      * @return
      */
     public static JedisUtil getInstance() {
-        return redis;
+        return REDIS;
     }
 
 
@@ -118,25 +115,28 @@ public class JedisUtil {
             jedis.close();
         }
     }
+
     /**
      * setnx带过期时间功能
-     * @param key 键名
-     * @param value 键值
+     *
+     * @param key     键名
+     * @param value   键值
      * @param seconds 单位秒
-     * @see   redis.clients.jedis.Jedis#setnx(String, String)
-     * @see   redis.clients.jedis.Jedis#expire(String, int)
-     * @return 成功返回true,失败false
+     * @return 成功返回true, 失败false
+     * @see redis.clients.jedis.Jedis#setnx(String, String)
+     * @see redis.clients.jedis.Jedis#expire(String, int)
      */
-    public boolean setnxAndExpire(String key,String value,int seconds){
+    public boolean setnxAndExpire(String key, String value, int seconds) {
         Jedis redis = null;
         try {
             redis = getJedis();
-            Object result = redis.eval(SETNX_EXPIRE_SCRIPT, 3,key,value,seconds+"");
+            Object result = redis.eval(SETNX_EXPIRE_SCRIPT, 3, key, value, seconds + "");
             return result != null;
         } finally {
             redis.close();
         }
     }
+
     /**
      * 当 oldkey 已经存在时,将 oldkey 改名为 newkey，如果不存在该oldkey,将会发生异常
      *
@@ -1203,6 +1203,7 @@ public class JedisUtil {
 
     /**
      * List长度
+     *
      * @param key
      * @return 长度
      */
@@ -1228,7 +1229,7 @@ public class JedisUtil {
         Jedis jedis = null;
         try {
             jedis = getJedis();
-            return "OK".equals(jedis.lset(key,index,value));
+            return "OK".equals(jedis.lset(key, index, value));
         } finally {
             jedis.close();
         }
@@ -1239,6 +1240,7 @@ public class JedisUtil {
      * 当 pivot 不存在于列表 key 时，不执行任何操作。
      * 当 key 不存在时， key 被视为空列表，不执行任何操作。
      * 如果 key 不是列表类型，返回一个错误。
+     *
      * @param key
      * @param where 前面插入或后面插入
      * @param pivot 相对位置的内容
@@ -1250,7 +1252,7 @@ public class JedisUtil {
         Jedis jedis = null;
         try {
             jedis = getJedis();
-            return jedis.linsert(key,where,pivot,value);
+            return jedis.linsert(key, where, pivot, value);
         } finally {
             jedis.close();
         }
@@ -1258,6 +1260,7 @@ public class JedisUtil {
 
     /**
      * 返回列表 key 中，下标为 index 的元素
+     *
      * @param key
      * @param index 位置
      * @return 列表中下标为 index 的元素,如果 index 参数的值不在列表的区间范围内,返回null
@@ -1266,7 +1269,7 @@ public class JedisUtil {
         Jedis jedis = null;
         try {
             jedis = getJedis();
-            return jedis.lindex(key,index);
+            return jedis.lindex(key, index);
         } finally {
             jedis.close();
         }
@@ -1307,13 +1310,14 @@ public class JedisUtil {
     /**
      * 将一个或多个值 value 插入到列表 key 的表头,
      * 如果有多个 value 值，那么各个 value 值按从左到右的顺序依次插入到表头
+     *
      * @return 记录总数
      */
     public long lpush(String key, String... value) {
         Jedis jedis = null;
         try {
             jedis = getJedis();
-            return jedis.lpush(key,value);
+            return jedis.lpush(key, value);
         } finally {
             jedis.close();
         }
@@ -1322,13 +1326,14 @@ public class JedisUtil {
     /**
      * 将一个或多个值 value 插入到列表 key 的表尾(最右边)。
      * 如果有多个 value 值，那么各个 value 值按从左到右的顺序依次插入到表尾
+     *
      * @return 记录总数
      */
     public long rpush(String key, String value) {
         Jedis jedis = null;
         try {
             jedis = getJedis();
-            return jedis.rpush(key,value);
+            return jedis.rpush(key, value);
         } finally {
             jedis.close();
         }
@@ -1336,13 +1341,14 @@ public class JedisUtil {
 
     /**
      * 获取指定闭区间范围的记录
+     *
      * @return List
      */
     public List<String> lrange(String key, long start, long end) {
         Jedis jedis = null;
         try {
             jedis = getJedis();
-            return jedis.lrange(key,start,end);
+            return jedis.lrange(key, start, end);
         } finally {
             jedis.close();
         }
@@ -1360,7 +1366,7 @@ public class JedisUtil {
         Jedis jedis = null;
         try {
             jedis = getJedis();
-            return jedis.lrem(key,c,value);
+            return jedis.lrem(key, c, value);
         } finally {
             jedis.close();
         }
@@ -1368,6 +1374,7 @@ public class JedisUtil {
 
     /**
      * 列表只保留指定区间内的元素，不在指定区间之内的元素都将被删除
+     *
      * @param key
      * @param start 记录的开始位置(0表示第一条记录)
      * @param end   记录的结束位置（如果为-1则表示最后一个，-2，-3以此类推）
@@ -1377,7 +1384,7 @@ public class JedisUtil {
         Jedis jedis = null;
         try {
             jedis = getJedis();
-            return "OK".equals(jedis.ltrim(key,start,end));
+            return "OK".equals(jedis.ltrim(key, start, end));
         } finally {
             jedis.close();
         }

@@ -14,7 +14,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.Base64;
 
-public class RSAUtils {
+public class RsaUtils {
 
     /**
      * 加密算法RSA
@@ -70,7 +70,7 @@ public class RSAUtils {
      */
     public static String encrypt(String paramstr, String publicKey) {
         try {
-            byte[] cipherData = RSAUtils.encryptByPublicKey(paramstr.getBytes(CHARSET), publicKey);
+            byte[] cipherData = RsaUtils.encryptByPublicKey(paramstr.getBytes(CHARSET), publicKey);
             return new String(Base64.getEncoder().encode(cipherData),CHARSET);
         } catch (Exception e) {
             e.printStackTrace();
@@ -86,7 +86,7 @@ public class RSAUtils {
      */
     public static String decrypt(String cipherData, String privateKey) {
         try {
-            byte[] cipher = RSAUtils.decryptByPrivateKey(Base64.getDecoder().decode(cipherData), privateKey);
+            byte[] cipher = RsaUtils.decryptByPrivateKey(Base64.getDecoder().decode(cipherData), privateKey);
             String result = new String(cipher, CHARSET);
             return result;
         } catch (Exception e) {

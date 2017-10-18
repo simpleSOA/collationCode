@@ -60,16 +60,21 @@ public class HttpClientUtil {
     private static CloseableHttpClient httpClient;
 
     static {
-        DEFAULT_HEADERS.put(HTTP.CONN_DIRECTIVE,HTTP.CONN_CLOSE);
+        DEFAULT_HEADERS.put(HTTP.CONN_DIRECTIVE, HTTP.CONN_CLOSE);
         X509TrustManager tm = new X509TrustManager() {
 
+            @Override
             public void checkClientTrusted(X509Certificate[] xcs,
                                            String string) throws CertificateException {
 
             }
+
+            @Override
             public void checkServerTrusted(X509Certificate[] xcs,
                                            String string) throws CertificateException {
             }
+
+            @Override
             public X509Certificate[] getAcceptedIssuers() {
                 return null;
             }
@@ -77,9 +82,9 @@ public class HttpClientUtil {
         SSLContext sslcontext;
         try {
             sslcontext = SSLContext.getInstance("SSL");
-            sslcontext.init(null,new TrustManager[]{tm},null);
+            sslcontext.init(null, new TrustManager[]{tm}, null);
         } catch (Exception e) {
-            throw new RuntimeException("init SSLContext error",e);
+            throw new RuntimeException("init SSLContext error", e);
         }
 
         Registry<ConnectionSocketFactory> socketFactoryRegistry = RegistryBuilder.<ConnectionSocketFactory>create()
@@ -117,32 +122,36 @@ public class HttpClientUtil {
         httpClient = HttpClients.custom().setKeepAliveStrategy((response, context) -> -1).setDefaultRequestConfig(requestConfig).disableAutomaticRetries()
                 .setConnectionManager(connManager).build();
     }
+
     /**
      * 发送 post请求，默认编码是UTF-8
+     *
      * @param httpUrl 地址
-     * @param maps 参数
+     * @param maps    参数
      */
-    public static String sendHttpPost(String httpUrl, Map<String, String> maps) throws IOException{
+    public static String sendHttpPost(String httpUrl, Map<String, String> maps) throws IOException {
         return sendHttpPost(httpUrl, maps, StandardCharsets.UTF_8, DEFAULT_HEADERS);
     }
 
     /**
      * 发送 post请求，默认编码是UTF-8
+     *
      * @param httpUrl 地址
-     * @param maps 参数
+     * @param maps    参数
      */
-    public static String sendHttpPost(String httpUrl, Map<String, String> maps, Map<String, String> headers) throws IOException{
+    public static String sendHttpPost(String httpUrl, Map<String, String> maps, Map<String, String> headers) throws IOException {
         return sendHttpPost(httpUrl, maps, StandardCharsets.UTF_8, headers);
     }
 
 
     /**
      * 发送 post请求
+     *
      * @param httpUrl 地址
-     * @param maps 参数
+     * @param maps    参数
      * @param charset 按给定的字符集给参数编码
      */
-    public static String sendHttpPost(String httpUrl, Map<String, String> maps, Charset charset,Map<String, String> headers) throws IOException{
+    public static String sendHttpPost(String httpUrl, Map<String, String> maps, Charset charset, Map<String, String> headers) throws IOException {
         HttpPost httpPost = new HttpPost(httpUrl);// 创建httpPost
         // 创建参数队列
         List<NameValuePair> nameValuePairs = new ArrayList<>();
@@ -158,72 +167,75 @@ public class HttpClientUtil {
                 param.append(m.getValue());
             }
         }
-        if(headers != null){
+        if (headers != null) {
             for (Map.Entry<String, String> m : headers.entrySet()) {
                 httpPost.addHeader(m.getKey(), m.getValue());
             }
         }
         httpPost.setEntity(new UrlEncodedFormEntity(nameValuePairs, charset));
-        if(LOGGER.isInfoEnabled()){
-            LOGGER.info("url :{}, param :{}",httpUrl,param);
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("url :{}, param :{}", httpUrl, param);
         }
         String data = sendHttpPost(httpPost, charset);
-        if(LOGGER.isInfoEnabled()){
-            LOGGER.info("post response {}",data);
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("post response {}", data);
         }
         return data;
     }
+
     /**
      * 发送doGet请求，默认编码是UTF-8
-     * @param url 地址
+     *
+     * @param url  地址
      * @param maps 参数
      */
-    public static String sendHttpGet(String url,Map<String, String> maps) throws Exception{
-        return sendHttpGet(url,maps,StandardCharsets.UTF_8,DEFAULT_HEADERS);
+    public static String sendHttpGet(String url, Map<String, String> maps) throws Exception {
+        return sendHttpGet(url, maps, StandardCharsets.UTF_8, DEFAULT_HEADERS);
     }
 
-    public static String sendHttpGet(String url,Map<String, String> maps,Map<String, String> headers) throws Exception{
-        return sendHttpGet(url,maps,StandardCharsets.UTF_8,headers);
+    public static String sendHttpGet(String url, Map<String, String> maps, Map<String, String> headers) throws Exception {
+        return sendHttpGet(url, maps, StandardCharsets.UTF_8, headers);
     }
 
-    public static String sendHttpGet(String url,Map<String, String> maps, Charset charset,Map<String, String> headers) throws Exception{
+    public static String sendHttpGet(String url, Map<String, String> maps, Charset charset, Map<String, String> headers) throws Exception {
         HttpGet httpGet = new HttpGet(url);
         String uri = httpGet.getURI().toString();
-        if(maps !=null || maps.isEmpty()){
+        if (maps != null || maps.isEmpty()) {
             List<NameValuePair> nameValuePairs = new ArrayList<>();
             for (Map.Entry<String, String> m : maps.entrySet()) {
                 nameValuePairs.add(new BasicNameValuePair(m.getKey(), m.getValue()));
             }
             // 设置参数
             String str = EntityUtils.toString(new UrlEncodedFormEntity(nameValuePairs));
-            uri += "?"+str;
+            uri += "?" + str;
         }
-        if(LOGGER.isDebugEnabled()){
-            LOGGER.debug("get request uri [{}]",uri);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("get request uri [{}]", uri);
         }
         httpGet.setURI(new URI(uri));
-        if(headers != null){
+        if (headers != null) {
             for (Map.Entry<String, String> m : headers.entrySet()) {
                 httpGet.addHeader(m.getKey(), m.getValue());
             }
         }
-        try(CloseableHttpResponse response = getHttpClient().execute(httpGet)) {
+        try (CloseableHttpResponse response = getHttpClient().execute(httpGet)) {
             return EntityUtils.toString(response.getEntity(), charset);
         }
     }
 
 
-    private static CloseableHttpClient getHttpClient(){
+    private static CloseableHttpClient getHttpClient() {
         return httpClient;
     }
 
     /**
      * 发送Post请求
+     *
      * @param httpPost
      * @return
      */
     private static String sendHttpPost(HttpPost httpPost, Charset charset) throws IOException {
-        try (CloseableHttpResponse response = httpClient.execute(httpPost)){
+        try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
             return EntityUtils.toString(response.getEntity(), charset);
         }
     }
