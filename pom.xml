@@ -65,6 +65,11 @@
             <artifactId>easypoi-annotation</artifactId>
             <version>4.0.0</version>
         </dependency>
+        <dependency>
+            <groupId>com.alibaba</groupId>
+            <artifactId>fastjson</artifactId>
+            <version>1.2.59</version>
+        </dependency>
         <!--excel end-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
