@@ -1,16 +1,16 @@
 package com.springboot.core.database.redis;
 
-import redis.clients.jedis.BinaryClient.LIST_POSITION;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
+import redis.clients.jedis.ListPosition;
 import redis.clients.jedis.SortingParams;
-import redis.clients.util.SafeEncoder;
 
 import java.util.List;
 import java.util.Map;
 import java.util.ResourceBundle;
 import java.util.Set;
+import redis.clients.jedis.util.SafeEncoder;
 
 /**
  * @author: Administrator
@@ -1250,7 +1250,7 @@ public class JedisUtil {
      * @param value 插入的内容
      * @return 如果命令执行成功，返回插入操作完成之后，列表的长度,如果没有找到 pivot ，返回 -1,如果 key 不存在或为空列表，返回 0
      */
-    public long linsert(String key, LIST_POSITION where, String pivot,
+    public long linsert(String key, ListPosition where, String pivot,
                         String value) {
         Jedis jedis = null;
         try {

@@ -85,7 +85,11 @@ public class DemoController {
         List<Map<String, Object>> list = ExcelUtils.importExcel(file, params, Map.class);
         List<User> users = list.stream().filter(m -> !m.isEmpty()).map(k -> new User(k.get("name") == null ? "" : k.get("name").toString(),
                 k.get("username") == null ? "" : k.get("username").toString(), k.get("BG") == null ? "" : k.get("BG").toString())).collect(Collectors.toList());
-        users.stream().map(u -> u.email).collect(Collectors.toSet()).forEach(System.out::println);
+        for (User u: users){
+            if (!u.username.contains(u.email)){
+                System.out.println(u);
+            }
+        }
     }
 
     class User {
