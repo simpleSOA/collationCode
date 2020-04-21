@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
 public class StreamMessageListener implements
     StreamListener<String, MapRecord<String, String, String>> {
 
-  private final static String STREAM_NAME = "TEST";
+  private final static String STREAM_NAME = "TEST1";
 
   private final StringRedisTemplate stringRedisTemplate;
   private final RedisConnectionFactory connectionFactory;
