@@ -72,16 +72,16 @@
             <artifactId>easypoi-annotation</artifactId>
             <version>4.1.3</version>
         </dependency>
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>fastjson</artifactId>
-            <version>1.2.60</version>
-        </dependency>
         <!--excel end-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>4.5.15</version>
         </dependency>
     </dependencies>
     <build>
