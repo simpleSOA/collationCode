@@ -49,7 +49,7 @@ public class HttpClientUtil {
   public static final Logger LOGGER = LoggerFactory.getLogger(HttpClientUtil.class);
 
   private final static int CONNECTION_TIMEOUT = 4 * 1000; //设置连接超时时间，单位毫秒
-  private final static int SO_TIMEOUT = 4 * 1000; //请求获取数据的超时时间，单位毫秒
+  private final static int SO_TIMEOUT = 20 * 1000; //请求获取数据的超时时间，单位毫秒
   private final static int CONNECTION_REQUEST_TIMEOUT = 500; //设置从连接池获取链接的超时时间，不能设置太大，否则会造成线程阻塞造成雪球效应
 
   private static final Map<String, String> DEFAULT_HEADERS = new HashMap<>();
@@ -189,13 +189,13 @@ public class HttpClientUtil {
       }
     }
     httpPost.setEntity(new UrlEncodedFormEntity(nameValuePairs, charset));
-    if (LOGGER.isInfoEnabled()) {
-      LOGGER.info("url :{}, param :{}", httpUrl, param);
-    }
+//    if (LOGGER.isInfoEnabled()) {
+//      LOGGER.info("url :{}, param :{}", httpUrl, param);
+//    }
     String data = getHttpPostResponse(httpPost);
-    if (LOGGER.isInfoEnabled()) {
-      LOGGER.info("post response {}", data);
-    }
+//    if (LOGGER.isInfoEnabled()) {
+//      LOGGER.info("post response {}", data);
+//    }
     return data;
   }
 
