@@ -1,9 +1,9 @@
 package com.springboot.core.encryption;
 
+import java.security.Key;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.spec.IvParameterSpec;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -15,59 +15,38 @@ import java.util.Base64;
  * Date: 2016/3/1 Time: 14:04
  */
 public class AESEncrypt {
-    /**
-     * 默认密钥
-     */
+    private static final String IV = "1234567890ars2xh";
+    private static final String TRANSFORM = "AES/CBC/PKCS5Padding";
     private static final Charset ENCODING = StandardCharsets.UTF_8;
 
-    /**
-     * aes加密后再base64编码
-     *
-     * @param sSrc 需要被加密的字符串
-     * @param key  密钥
-     * @return
-     * @throws Exception
-     */
-    public static String encrypt(String sSrc, String key) throws Exception {
-        if (key.length() != 16) {
-            throw new RuntimeException("key length not equal 16. key length is " + key.length());
-        }
-        KeyGenerator kgen = KeyGenerator.getInstance("AES");
-        //防止linux下 随机生成key
+    private static Key getKey(String strKey) throws Exception{
+        KeyGenerator generator = KeyGenerator.getInstance("AES");
         SecureRandom secureRandom = SecureRandom.getInstance("SHA1PRNG");
-        secureRandom.setSeed(key.getBytes(ENCODING));
-        kgen.init(128, secureRandom);
-        SecretKey secretKey = kgen.generateKey();
-        byte[] enCodeFormat = secretKey.getEncoded();
-        SecretKeySpec keySpec = new SecretKeySpec(enCodeFormat, "AES");
-        Cipher cipher = Cipher.getInstance("AES");// 创建密码器
-        byte[] byteContent = sSrc.getBytes(ENCODING);
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec);// 初始化
-        byte[] result = cipher.doFinal(byteContent);
-        return Base64.getEncoder().encodeToString(result);
+        secureRandom.setSeed(strKey.getBytes(ENCODING));
+        generator.init(256, secureRandom);
+        return generator.generateKey();
     }
 
-    /**
-     * 先base64解码，再aes解密
-     * @param sSrc 需要被解密的字符串
-     * @param key  密钥
-     */
-    public static String decrypt(String sSrc, String key) throws Exception {
-        if (key.length() != 16) {
-            throw new RuntimeException("key length not equal 16. key length is " + key.length());
-        }
-        byte[] content = Base64.getDecoder().decode(sSrc);// 先用base64解密
-        KeyGenerator kgen = KeyGenerator.getInstance("AES");
-        //防止linux下 随机生成key
-        SecureRandom secureRandom = SecureRandom.getInstance("SHA1PRNG");
-        secureRandom.setSeed(key.getBytes(ENCODING));
-        kgen.init(128, secureRandom);
-        SecretKey secretKey = kgen.generateKey();
-        byte[] enCodeFormat = secretKey.getEncoded();
-        SecretKeySpec keySpec = new SecretKeySpec(enCodeFormat, "AES");
-        Cipher cipher = Cipher.getInstance("AES");// 创建密码器
-        cipher.init(Cipher.DECRYPT_MODE, keySpec);// 初始化
-        byte[] result = cipher.doFinal(content);
-        return new String(result, ENCODING);
+
+    public static String aesEncrypt(String content, String pkey) throws Exception{
+        SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+        sr.setSeed(pkey.getBytes(ENCODING));
+        Key secureKey = getKey(pkey);
+        Cipher cipher = Cipher.getInstance(TRANSFORM);
+        IvParameterSpec iv = new IvParameterSpec(IV.getBytes());
+        cipher.init(Cipher.ENCRYPT_MODE, secureKey, iv, sr);
+        byte[] bytes = cipher.doFinal(content.getBytes(ENCODING));
+        return Base64.getEncoder().encodeToString(bytes);
+    }
+
+    public static String aesDecode(String content, String pkey) throws Exception {
+        byte[] decode = Base64.getDecoder().decode(content);
+        SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
+        sr.setSeed(pkey.getBytes(ENCODING));
+        IvParameterSpec iv = new IvParameterSpec(IV.getBytes(StandardCharsets.UTF_8));
+        Cipher cipher = Cipher.getInstance(TRANSFORM);
+        cipher.init(Cipher.DECRYPT_MODE, getKey(pkey), iv, sr);
+        return new String(cipher.doFinal(decode));
+
     }
 }
